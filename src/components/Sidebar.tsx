@@ -104,11 +104,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-secondary-950 text-secondary-300 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed left-0 top-0 h-screen w-64 flex flex-col bg-secondary-950 text-secondary-300 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 z-40 border-r border-secondary-800/50 shadow-2xl shadow-black/20`}
       >
         {/* Logo/Brand */}
-        <div className="p-6 border-b border-secondary-800/50 flex items-center justify-between bg-secondary-950">
+        <div className="p-6 border-b border-secondary-800/50 flex items-center justify-between bg-secondary-950 shrink-0">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2 tracking-tight">
               <div className="w-9 h-9 bg-linear-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
