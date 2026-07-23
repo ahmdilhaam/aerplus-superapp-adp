@@ -1,0 +1,40 @@
+import type { Outlet } from '../types'
+
+export const outlets: Outlet[] = [
+  {
+    id: 'cad4fb4c-82b8-4ec0-a7af-097b9cf643a2',
+    companyId: '550983f3-7edc-469e-85ae-baae8a48e98c',
+    slug: 'main',
+    name: 'Main Outlet',
+    address: 'Jakarta, Indonesia',
+    latitude: null,
+    longitude: null,
+    imageUrl: 'https://via.placeholder.com/150',
+    isActive: true,
+    createdAt: '2026-05-19T01:32:50.194Z',
+  },
+  {
+    id: 'a1234b5c-d6e7-4f8g-h9ij-k1l2m3n4o5p6',
+    companyId: '550983f3-7edc-469e-85ae-baae8a48e98c',
+    slug: 'jakarta-south',
+    name: 'Jakarta South Branch',
+    address: 'South Jakarta, Indonesia',
+    latitude: null,
+    longitude: null,
+    imageUrl: 'https://via.placeholder.com/150',
+    isActive: true,
+    createdAt: '2026-05-20T08:15:30.450Z',
+  },
+  {
+    id: 'b2345c6d-e7f8-4g9h-i0jk-l2m3n4o5p6q7',
+    companyId: '550983f3-7edc-469e-85ae-baae8a48e98c',
+    slug: 'bandung',
+    name: 'Bandung Outlet',
+    address: 'Bandung, Indonesia',
+    latitude: null,
+    longitude: null,
+    imageUrl: 'https://via.placeholder.com/150',
+    isActive: false,
+    createdAt: '2026-05-18T14:45:20.123Z',
+  },
+]
