@@ -14,7 +14,7 @@ import { getAuditReports, getAuditReport } from '../services/api'
 import type { AuditReportsQuery } from '../services/api'
 import { DataTable } from '../components/DataTable'
 import { Pagination } from '../components/Pagination'
-import { ReportDetailView, statusBadge } from '../components/ReportDetailView'
+import { ReportDetailView, ReportChecklist, statusBadge } from '../components/ReportDetailView'
 
 const PAGE_SIZE_OPTIONS = [10, 50, 100]
 
@@ -104,7 +104,7 @@ const AuditDetailModal: React.FC<AuditDetailModalProps> = ({ isOpen, onClose, au
                 <h3 className="text-sm font-black uppercase tracking-widest text-primary-600 mb-4 flex items-center gap-2">
                   <ShieldCheck size={16} /> Audit
                 </h3>
-                <ReportDetailView detail={detail.audit} />
+                <ReportDetailView detail={detail.audit} hideChecklist />
               </div>
 
               {/* Right: SPV snapshot (comparison) */}
@@ -113,7 +113,7 @@ const AuditDetailModal: React.FC<AuditDetailModalProps> = ({ isOpen, onClose, au
                   <GitCompare size={16} /> Laporan SPV (Pembanding)
                 </h3>
                 {detail.spvSnapshot ? (
-                  <ReportDetailView detail={detail.spvSnapshot} />
+                  <ReportDetailView detail={detail.spvSnapshot} hideChecklist />
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 bg-secondary-50/50 rounded-2xl border border-dashed border-secondary-200 text-center px-6">
                     <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-4 text-secondary-300 border border-secondary-100">
@@ -128,6 +128,16 @@ const AuditDetailModal: React.FC<AuditDetailModalProps> = ({ isOpen, onClose, au
                   </div>
                 )}
               </div>
+
+              {/* Baris checklist terpisah — kedua kolom mulai di garis grid yang
+                  sama sehingga section checklist audit & SPV selalu sejajar,
+                  berapapun tinggi laporan di atasnya. */}
+              <ReportChecklist detail={detail.audit} />
+              {detail.spvSnapshot && (
+                <div className="lg:border-l lg:border-secondary-100 lg:pl-8">
+                  <ReportChecklist detail={detail.spvSnapshot} />
+                </div>
+              )}
             </div>
           )}
         </div>

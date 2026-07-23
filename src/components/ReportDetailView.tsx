@@ -73,8 +73,110 @@ export const statusBadge = (status: string) => {
   )
 }
 
+// Galeri foto bukti (audit-only) — dipakai untuk item checklist maupun section
+// laporan. Klik thumbnail → lightbox (via onOpen). Null bila tak ada foto.
+const PhotoThumbs: React.FC<{
+  photos?: ChecklistItemPhoto[]
+  onOpen: (url: string) => void
+}> = ({ photos, onOpen }) => {
+  if (!photos || photos.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {photos.map((photo, pi) => {
+        const url = resolveApiFileUrl(photo.url)
+        return url ? (
+          <button
+            key={pi}
+            type="button"
+            onClick={() => onOpen(url)}
+            className="w-14 h-14 rounded-lg overflow-hidden border border-secondary-200 hover:ring-2 hover:ring-primary-400 transition-all shrink-0"
+            title="Lihat foto"
+          >
+            <img src={url} alt="Bukti foto audit" className="w-full h-full object-cover" />
+          </button>
+        ) : (
+          <div
+            key={pi}
+            className="w-14 h-14 rounded-lg bg-secondary-100 border border-dashed border-secondary-200 flex items-center justify-center text-secondary-300 shrink-0"
+            title="Foto tidak tersedia"
+          >
+            <ImageOff size={16} />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Checklist section (kategori collapsible + foto bukti) sebagai komponen
+// terpisah agar Audit.tsx bisa merendernya di baris grid sendiri — sejajar
+// antara kolom audit dan kolom SPV pembanding meski tinggi laporan beda.
+export const ReportChecklist: React.FC<{ detail: VisitReportDetail }> = ({ detail }) => {
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const toggleCategory = (name: string) =>
+    setOpenCategories((prev) => ({ ...prev, [name]: !prev[name] }))
+
+  return (
+    <section>
+      <h4 className="text-base font-black text-secondary-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+        <CheckCircle2 size={16} className="text-primary-500" /> Checklist
+        <span className="text-xs font-bold text-secondary-400 normal-case tracking-normal">
+          {detail.checklist.summary.completed}/{detail.checklist.summary.total} selesai
+        </span>
+      </h4>
+      <div className="space-y-3">
+        {detail.checklist.categories.map((cat) => (
+          <div key={cat.name} className="border border-secondary-100 rounded-xl overflow-hidden">
+            <button
+              onClick={() => toggleCategory(cat.name)}
+              className="w-full flex items-center justify-between px-5 py-4 bg-secondary-50 hover:bg-secondary-100 transition-colors text-left"
+            >
+              <span className="text-sm font-black text-secondary-900">{cat.name}</span>
+              <span className="text-xs font-bold text-secondary-400">{openCategories[cat.name] ? '▲' : '▼'}</span>
+            </button>
+            {openCategories[cat.name] && (
+              <div className="divide-y divide-secondary-50">
+                {cat.sections.map((sec) => (
+                  <div key={sec.name} className="px-5 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary-400 mb-2">{sec.name}</p>
+                    <div className="space-y-2">
+                      {sec.items.map((item) => (
+                        <div key={item.id} className="flex items-start gap-3">
+                          {item.answer ? (
+                            <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm text-secondary-800">{item.question}</p>
+                            {item.note && (
+                              <p className="text-xs text-secondary-400 italic mt-0.5">{item.note}</p>
+                            )}
+                            <PhotoThumbs photos={item.photos} onOpen={setLightboxUrl} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />
+    </section>
+  )
+}
+
 interface ReportDetailViewProps {
   detail: VisitReportDetail
+  // Sembunyikan section checklist — dipakai Audit.tsx yang merender
+  // <ReportChecklist> terpisah di baris grid berikutnya agar sejajar.
+  hideChecklist?: boolean
 }
 
 // Full rendering of a single visit report (SPV or audit): outlet header, visit
@@ -82,44 +184,8 @@ interface ReportDetailViewProps {
 // Reports.tsx's detail modal and Audit.tsx's side-by-side comparison view.
 // Checklist items that carry `photos` (audit reports only) render a thumbnail
 // gallery with a click-to-enlarge lightbox.
-export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) => {
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
+export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hideChecklist }) => {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-
-  const toggleCategory = (name: string) =>
-    setOpenCategories((prev) => ({ ...prev, [name]: !prev[name] }))
-
-  // Galeri foto bukti (audit-only) — dipakai untuk item checklist maupun section
-  // laporan. Klik thumbnail → lightbox. Mengembalikan null bila tak ada foto.
-  const renderPhotos = (photos?: ChecklistItemPhoto[]) => {
-    if (!photos || photos.length === 0) return null
-    return (
-      <div className="flex flex-wrap gap-2 mt-2">
-        {photos.map((photo, pi) => {
-          const url = resolveApiFileUrl(photo.url)
-          return url ? (
-            <button
-              key={pi}
-              type="button"
-              onClick={() => setLightboxUrl(url)}
-              className="w-14 h-14 rounded-lg overflow-hidden border border-secondary-200 hover:ring-2 hover:ring-primary-400 transition-all shrink-0"
-              title="Lihat foto"
-            >
-              <img src={url} alt="Bukti foto audit" className="w-full h-full object-cover" />
-            </button>
-          ) : (
-            <div
-              key={pi}
-              className="w-14 h-14 rounded-lg bg-secondary-100 border border-dashed border-secondary-200 flex items-center justify-center text-secondary-300 shrink-0"
-              title="Foto tidak tersedia"
-            >
-              <ImageOff size={16} />
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-8">
@@ -285,7 +351,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
             {detail.laporan.cash.note && (
               <p className="mt-2 text-xs text-secondary-500 italic border-t border-secondary-100 pt-2">{detail.laporan.cash.note}</p>
             )}
-            {renderPhotos(detail.laporanPhotos?.cash)}
+            <PhotoThumbs photos={detail.laporanPhotos?.cash} onOpen={setLightboxUrl} />
           </div>
 
           {/* Pengantaran Galon */}
@@ -311,7 +377,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
             {detail.laporan.pengantaranGalon.note && (
               <p className="mt-2 text-xs text-secondary-500 italic border-t border-secondary-100 pt-2">{detail.laporan.pengantaranGalon.note}</p>
             )}
-            {renderPhotos(detail.laporanPhotos?.pengantaranGalon)}
+            <PhotoThumbs photos={detail.laporanPhotos?.pengantaranGalon} onOpen={setLightboxUrl} />
           </div>
 
           {/* Stok Bahan Baku */}
@@ -338,7 +404,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
             ) : (
               <p className="text-sm text-secondary-300 font-medium">—</p>
             )}
-            {renderPhotos(detail.laporanPhotos?.stokBahanBaku)}
+            <PhotoThumbs photos={detail.laporanPhotos?.stokBahanBaku} onOpen={setLightboxUrl} />
           </div>
 
           {/* Kualitas Air */}
@@ -357,7 +423,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
             {detail.laporan.kualitasAir.note && (
               <p className="mt-2 text-xs text-secondary-500 italic border-t border-secondary-100 pt-2">{detail.laporan.kualitasAir.note}</p>
             )}
-            {renderPhotos(detail.laporanPhotos?.kualitasAir)}
+            <PhotoThumbs photos={detail.laporanPhotos?.kualitasAir} onOpen={setLightboxUrl} />
           </div>
 
           {/* What To Do */}
@@ -370,7 +436,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
             ) : (
               <p className="text-sm text-secondary-300 font-medium">—</p>
             )}
-            {renderPhotos(detail.laporanPhotos?.whatToDo)}
+            <PhotoThumbs photos={detail.laporanPhotos?.whatToDo} onOpen={setLightboxUrl} />
           </div>
 
           {/* Catatan Audit — audit-only (v1.4): multi-section (title + body + foto ≤3) */}
@@ -384,7 +450,7 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
                     {note.body && (
                       <p className="text-sm text-secondary-700 whitespace-pre-line mt-1">{note.body}</p>
                     )}
-                    {renderPhotos(note.photos)}
+                    <PhotoThumbs photos={note.photos} onOpen={setLightboxUrl} />
                   </div>
                 ))}
               </div>
@@ -437,55 +503,8 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail }) =>
       </section>
       )}
 
-      {/* Checklist section */}
-      <section>
-        <h4 className="text-base font-black text-secondary-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <CheckCircle2 size={16} className="text-primary-500" /> Checklist
-          <span className="text-xs font-bold text-secondary-400 normal-case tracking-normal">
-            {detail.checklist.summary.completed}/{detail.checklist.summary.total} selesai
-          </span>
-        </h4>
-        <div className="space-y-3">
-          {detail.checklist.categories.map((cat) => (
-            <div key={cat.name} className="border border-secondary-100 rounded-xl overflow-hidden">
-              <button
-                onClick={() => toggleCategory(cat.name)}
-                className="w-full flex items-center justify-between px-5 py-4 bg-secondary-50 hover:bg-secondary-100 transition-colors text-left"
-              >
-                <span className="text-sm font-black text-secondary-900">{cat.name}</span>
-                <span className="text-xs font-bold text-secondary-400">{openCategories[cat.name] ? '▲' : '▼'}</span>
-              </button>
-              {openCategories[cat.name] && (
-                <div className="divide-y divide-secondary-50">
-                  {cat.sections.map((sec) => (
-                    <div key={sec.name} className="px-5 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary-400 mb-2">{sec.name}</p>
-                      <div className="space-y-2">
-                        {sec.items.map((item) => (
-                          <div key={item.id} className="flex items-start gap-3">
-                            {item.answer ? (
-                              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                            ) : (
-                              <XCircle size={16} className="text-rose-500 shrink-0 mt-0.5" />
-                            )}
-                            <div className="flex-1">
-                              <p className="text-sm text-secondary-800">{item.question}</p>
-                              {item.note && (
-                                <p className="text-xs text-secondary-400 italic mt-0.5">{item.note}</p>
-                              )}
-                              {renderPhotos(item.photos)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Checklist section — dipisah agar Audit.tsx bisa merendernya sejajar */}
+      {!hideChecklist && <ReportChecklist detail={detail} />}
 
       {/* Photo lightbox */}
       <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />
