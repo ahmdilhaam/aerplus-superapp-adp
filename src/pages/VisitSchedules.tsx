@@ -1,45 +1,21 @@
+/* eslint-disable react-hooks/purity */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Calendar,
-  MapPin,
-  Clock,
+  CalendarDays,
   AlertCircle,
   Search,
   ChevronDown,
-  User,
-  Clipboard,
-  Sun,
-  ImageOff,
+  ChevronLeft,
+  ChevronRight,
+  List,
 } from 'lucide-react'
-import type { AdminVisitItem, AdminVisitScheduleResponse, Outlet } from '../types'
+import type { AdminVisitScheduleResponse, Outlet } from '../types'
 import { getAdminVisitSchedule, getOutlets } from '../services/api'
-import { Badge } from '../components/Badge'
-import { ImageWithFallback } from '../components/ImageWithFallback'
-import { PhotoLightbox } from '../components/PhotoLightbox'
-import { resolveApiFileUrl } from '../utils/image'
-import { durationBadge } from '../utils/visitPresence'
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
-
-const formatDateId = (d: string): string =>
-  new Date(d + 'T00:00:00Z').toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-
-// Group a supervisor's visits by their date (sorted ascending) for multi-day ranges.
-const groupVisitsByDate = (visits: AdminVisitItem[]): Array<[string, AdminVisitItem[]]> => {
-  const map = new Map<string, AdminVisitItem[]>()
-  for (const v of visits) {
-    const arr = map.get(v.date)
-    if (arr) arr.push(v)
-    else map.set(v.date, [v])
-  }
-  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-}
+import { VisitCalendarView } from '../components/VisitCalendarView'
+import { VisitListView } from '../components/VisitListView'
+import { MS_PER_DAY, addDays, formatWeekRange, startOfWeek } from '../utils/visitDate'
 
 // Searchable outlet filter keyed by outlet id
 interface OutletFilterProps {
@@ -122,9 +98,8 @@ const OutletFilter: React.FC<OutletFilterProps> = ({ outlets, value, onChange })
                     setOpen(false)
                     setQuery('')
                   }}
-                  className={`w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-primary-50 transition-colors ${
-                    value === o.id ? 'bg-primary-50 text-primary-700' : 'text-secondary-700'
-                  }`}
+                  className={`w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-primary-50 transition-colors ${value === o.id ? 'bg-primary-50 text-primary-700' : 'text-secondary-700'
+                    }`}
                 >
                   {o.name}
                 </button>
@@ -137,143 +112,11 @@ const OutletFilter: React.FC<OutletFilterProps> = ({ outlets, value, onChange })
   )
 }
 
-const getStatusVariant = (statusCode: string): 'success' | 'warning' | 'error' | 'info' => {
-  const map: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
-    completed: 'success',
-    scheduled: 'warning',
-    missed: 'error',
-    failed: 'error',
-    approved: 'success',
-    pending: 'warning',
-    rejected: 'error',
-    libur: 'info',
-  }
-  return map[statusCode] ?? 'warning'
-}
-
-// A schedule row renders one of three item types: outlet visit, SPV agenda
-// ("Lainnya"), or holiday ("Libur"). Only visits carry an outlet.
-const ScheduleItemRow: React.FC<{ item: AdminVisitItem; onPhotoClick: (url: string) => void }> = ({
-  item: v,
-  onPhotoClick,
-}) => {
-  if (v.type === 'agenda') {
-    return (
-      <div className="flex items-center gap-4 px-8 py-5 hover:bg-secondary-50/40 transition-colors">
-        <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0 border border-violet-100">
-          <Clipboard size={16} className="text-violet-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-secondary-900 text-sm truncate">{v.title}</p>
-          <p className="text-[11px] text-secondary-400 flex items-center gap-1 mt-0.5">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 text-[9px] font-black uppercase tracking-wider">Agenda</span>
-            <span className="truncate">{v.note || 'Jadwal lainnya'}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-1 text-sm font-bold text-secondary-600 shrink-0">
-          <Clock size={13} className="text-secondary-400" />
-          {v.time}
-        </div>
-        <div className="shrink-0">
-          <Badge variant={getStatusVariant(v.statusCode)} label={v.status} />
-        </div>
-      </div>
-    )
-  }
-
-  if (v.type === 'libur') {
-    return (
-      <div className="flex items-center gap-4 px-8 py-5 hover:bg-secondary-50/40 transition-colors bg-rose-50/20">
-        <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100">
-          <Sun size={16} className="text-rose-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-secondary-900 text-sm truncate">{v.name}</p>
-          <p className="text-[11px] text-secondary-400 mt-0.5">Hari libur</p>
-        </div>
-        <div className="shrink-0">
-          <Badge variant="info" label={v.status} />
-        </div>
-      </div>
-    )
-  }
-
-  // visit
-  return (
-    <div className="flex items-center gap-4 px-8 py-5 hover:bg-secondary-50/40 transition-colors">
-      {/* Outlet image */}
-      <ImageWithFallback
-        src={v.outlet?.imageUrl}
-        alt={v.outlet?.name ?? ''}
-        className="w-12 h-12 rounded-xl object-cover border border-secondary-100 shrink-0"
-        fallback={
-          <div className="w-12 h-12 rounded-xl bg-secondary-100 flex items-center justify-center shrink-0">
-            <MapPin size={16} className="text-secondary-400" />
-          </div>
-        }
-      />
-
-      {/* Outlet info */}
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-secondary-900 text-sm truncate">{v.outlet?.name}</p>
-        <p className="text-[11px] text-secondary-400 flex items-center gap-1 mt-0.5">
-          <MapPin size={10} />
-          <span className="truncate">{v.outlet?.address}</span>
-        </p>
-      </div>
-
-      {/* Time */}
-      <div className="flex items-center gap-1 text-sm font-bold text-secondary-600 shrink-0">
-        <Clock size={13} className="text-secondary-400" />
-        {v.time}
-      </div>
-
-      {/* Presensi: foto bukti, durasi & telat — hanya bila sudah check-in */}
-      {v.presence?.checkinAt && (
-        <div className="shrink-0 flex items-center gap-2">
-          {(() => {
-            const url = resolveApiFileUrl(v.presence.checkinPhotoUrl)
-            return url ? (
-              <button
-                type="button"
-                onClick={() => onPhotoClick(url)}
-                className="w-9 h-9 rounded-lg overflow-hidden border border-secondary-200 hover:ring-2 hover:ring-primary-400 transition-all shrink-0"
-                title="Lihat foto presensi check-in"
-              >
-                <img src={url} alt="Foto bukti presensi check-in" className="w-full h-full object-cover" />
-              </button>
-            ) : (
-              <div
-                className="w-9 h-9 rounded-lg bg-secondary-100 border border-dashed border-secondary-200 flex items-center justify-center text-secondary-300 shrink-0"
-                title="Foto presensi tidak tersedia"
-              >
-                <ImageOff size={13} />
-              </div>
-            )
-          })()}
-          {v.presence.isLate && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-wider border border-rose-200">
-              Telat
-            </span>
-          )}
-          {(() => {
-            const db = durationBadge(v.presence.durationMinutes)
-            return db ? <Badge variant={db.variant} label={db.label} /> : null
-          })()}
-        </div>
-      )}
-
-      {/* Status badge */}
-      <div className="shrink-0">
-        <Badge variant={getStatusVariant(v.statusCode)} label={v.status} />
-      </div>
-    </div>
-  )
-}
-
 export const VisitSchedules: React.FC = () => {
   const today = new Date().toISOString().slice(0, 10)
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
+  const [weekStart, setWeekStart] = useState<string>(() => startOfWeek(today))
   const [startDate, setStartDate] = useState<string>(weekAgo)
   const [endDate, setEndDate] = useState<string>(today)
   const [outletId, setOutletId] = useState<string>('')
@@ -281,12 +124,6 @@ export const VisitSchedules: React.FC = () => {
   const [outlets, setOutlets] = useState<Outlet[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Foto bukti presensi yang sedang diperbesar (null = lightbox tertutup).
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  // Per-supervisor accordion state. Undefined = open by default; toggling stores explicit boolean.
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const toggleExpanded = (id: string) =>
-    setExpanded((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }))
 
   // Fetch outlets once on mount for dropdown
   useEffect(() => {
@@ -295,8 +132,18 @@ export const VisitSchedules: React.FC = () => {
       .catch(() => setOutlets([]))
   }, [])
 
+  // In calendar mode the range is always the Mon–Sun week; in list mode the user picks it.
+  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart])
+  const rangeStart = viewMode === 'calendar' ? weekStart : startDate
+  const rangeEnd = viewMode === 'calendar' ? weekEnd : endDate
+
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  )
+
   const fetchSchedule = useCallback(async () => {
-    const spanDays = (Date.parse(endDate) - Date.parse(startDate)) / MS_PER_DAY
+    const spanDays = (Date.parse(rangeEnd) - Date.parse(rangeStart)) / MS_PER_DAY
     if (Number.isNaN(spanDays) || spanDays < 0) {
       setLoading(false)
       alert('Tanggal akhir tidak boleh sebelum tanggal mulai')
@@ -311,8 +158,8 @@ export const VisitSchedules: React.FC = () => {
       setLoading(true)
       setError(null)
       const result = await getAdminVisitSchedule({
-        start_date: startDate || undefined,
-        end_date: endDate || undefined,
+        start_date: rangeStart || undefined,
+        end_date: rangeEnd || undefined,
         outlet_id: outletId || undefined,
       })
       setData(result)
@@ -322,7 +169,7 @@ export const VisitSchedules: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, outletId])
+  }, [rangeStart, rangeEnd, outletId])
 
   useEffect(() => {
     fetchSchedule()
@@ -350,32 +197,99 @@ export const VisitSchedules: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         {/* Outlet searchable dropdown */}
-        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+        <div className="flex flex-col gap-1 flex-1 min-w-55">
           <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Outlet</label>
           <OutletFilter outlets={outlets} value={outletId} onChange={setOutletId} />
         </div>
 
-        {/* Start date */}
+        {/* View mode toggle */}
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Dari</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-4 py-3 bg-white border border-secondary-100 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-300 transition-all text-sm font-semibold text-secondary-700"
-          />
+          <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Tampilan</label>
+          <div className="flex items-center gap-1 p-1 bg-white border border-secondary-100 rounded-2xl shadow-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'calendar'
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'text-secondary-400 hover:text-secondary-600 hover:bg-secondary-50'
+                }`}
+            >
+              <CalendarDays size={14} />
+              Kalender
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'list'
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'text-secondary-400 hover:text-secondary-600 hover:bg-secondary-50'
+                }`}
+            >
+              <List size={14} />
+              List
+            </button>
+          </div>
         </div>
 
-        {/* End date */}
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Sampai</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-4 py-3 bg-white border border-secondary-100 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-300 transition-all text-sm font-semibold text-secondary-700"
-          />
-        </div>
+        {viewMode === 'calendar' ? (
+          /* Week navigator — always Monday through Sunday */
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Minggu</label>
+            <div className="flex items-center gap-1 p-1 bg-white border border-secondary-100 rounded-2xl shadow-sm">
+              <button
+                type="button"
+                aria-label="Minggu sebelumnya"
+                onClick={() => setWeekStart((w) => addDays(w, -7))}
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-secondary-500 hover:bg-secondary-50 hover:text-primary-600 transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="px-2 text-sm font-black text-secondary-700 whitespace-nowrap min-w-37.5 text-center">
+                {formatWeekRange(weekStart, weekEnd)}
+              </span>
+              <button
+                type="button"
+                aria-label="Minggu berikutnya"
+                onClick={() => setWeekStart((w) => addDays(w, 7))}
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-secondary-500 hover:bg-secondary-50 hover:text-primary-600 transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekStart(startOfWeek(today))}
+                disabled={weekStart === startOfWeek(today)}
+                className="ml-1 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 border border-primary-100 hover:bg-primary-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Minggu Ini
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Start date */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Dari</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-4 py-3 bg-white border border-secondary-100 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-300 transition-all text-sm font-semibold text-secondary-700"
+              />
+            </div>
+
+            {/* End date */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Sampai</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-4 py-3 bg-white border border-secondary-100 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-300 transition-all text-sm font-semibold text-secondary-700"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Error state */}
@@ -416,82 +330,12 @@ export const VisitSchedules: React.FC = () => {
           </p>
         </div>
       ) : !error && data ? (
-        <div className="space-y-6">
-          {data.supervisors.map((s) => (
-            <div
-              key={s.id}
-              className="bg-white rounded-[2rem] border border-secondary-100 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-secondary-200/50"
-            >
-              {/* Supervisor header (accordion toggle) */}
-              <button
-                type="button"
-                onClick={() => toggleExpanded(s.id)}
-                className={`w-full flex items-center gap-4 px-8 py-6 text-left bg-gradient-to-r from-white to-secondary-50/30 transition-colors hover:bg-secondary-50/40 ${expanded[s.id] !== false ? 'border-b border-secondary-50' : ''}`}
-              >
-                <ImageWithFallback
-                  src={s.avatarUrl}
-                  alt={s.name}
-                  className="w-12 h-12 rounded-2xl object-cover border border-secondary-200 shrink-0"
-                  fallback={
-                    <div className="w-12 h-12 rounded-2xl bg-secondary-100 flex items-center justify-center shrink-0">
-                      <User size={20} className="text-secondary-400" />
-                    </div>
-                  }
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-secondary-900 tracking-tight">{s.name}</h3>
-                  <p className="text-[11px] text-secondary-400 font-bold uppercase tracking-widest mt-0.5">{s.role}</p>
-                </div>
-                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-primary-50 text-primary-700 text-[10px] font-black uppercase tracking-widest border border-primary-100 shrink-0">
-                  {s.visits.length} jadwal
-                </span>
-                <ChevronDown
-                  size={18}
-                  className={`text-secondary-400 transition-transform shrink-0 ${expanded[s.id] !== false ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {/* Visits list — grouped by date when the range spans multiple days */}
-              {expanded[s.id] !== false &&
-                (isRange ? (
-                  <div>
-                    {groupVisitsByDate(s.visits).map(([d, visits]) => (
-                      <div key={d}>
-                        <div className="flex items-center justify-between px-8 py-3 bg-secondary-50/60 border-b border-secondary-100">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-secondary-500 flex items-center gap-2">
-                            <Calendar size={12} className="text-secondary-400" />
-                            {formatDateId(d)}
-                          </span>
-                          <span className="text-[10px] font-bold text-secondary-400 uppercase tracking-widest">
-                            {visits.length} jadwal
-                          </span>
-                        </div>
-                        <div className="divide-y divide-secondary-50">
-                          {visits.map((v) => (
-                            <ScheduleItemRow key={v.id} item={v} onPhotoClick={setLightboxUrl} />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-secondary-50">
-                    {s.visits.map((v) => (
-                      <ScheduleItemRow key={v.id} item={v} onPhotoClick={setLightboxUrl} />
-                    ))}
-                  </div>
-                ))}
-            </div>
-          ))}
-        </div>
+        viewMode === 'calendar' ? (
+          <VisitCalendarView supervisors={data.supervisors} weekDays={weekDays} today={today} />
+        ) : (
+          <VisitListView supervisors={data.supervisors} isRange={isRange} />
+        )
       ) : null}
-
-      {/* Foto bukti presensi diperbesar */}
-      <PhotoLightbox
-        url={lightboxUrl}
-        onClose={() => setLightboxUrl(null)}
-        alt="Foto bukti presensi check-in diperbesar"
-      />
     </div>
   )
 }

@@ -365,12 +365,15 @@ export interface VisitPresence {
   // Foto bukti presensi yang diambil SPV saat check-in (URL presigned dari API).
   // Null bila belum check-in atau presign gagal di server.
   checkinPhotoUrl: string | null
+  // Idem untuk saat check-out. Null bila SPV belum check-out.
+  checkoutPhotoUrl: string | null
 }
 
 export interface AdminVisitItem {
   id: string
   type: 'visit' | 'agenda' | 'libur'
   time: string | null
+  endTime: string | null
   title: string | null
   note: string | null
   name: string | null

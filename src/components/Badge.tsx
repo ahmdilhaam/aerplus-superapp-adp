@@ -14,7 +14,7 @@ const variantClasses = {
 export const Badge: React.FC<BadgeProps> = ({ variant, label }) => {
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] border ring-1 ring-inset shadow-sm ${variantClasses[variant]}`}
+      className={`inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ring-1 ring-inset shadow-sm ${variantClasses[variant]}`}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-current mr-2 animate-pulse opacity-70"></span>
       {label}

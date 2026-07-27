@@ -543,7 +543,7 @@ export const VisitChecklistQuestions: React.FC = () => {
             </div>
           )}
 
-          <div className="p-5 bg-rose-50 border border-rose-100 rounded-[1.5rem] flex items-start gap-4">
+          <div className="p-5 bg-rose-50 border border-rose-100 rounded-3xl flex items-start gap-4">
             <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
               <Trash2 size={20} strokeWidth={2.5} />
             </div>

@@ -25,7 +25,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       {/* Modal Content */}
       <div className={`relative z-50 bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] ${maxWidthClassName} w-full overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-10 sm:slide-in-from-bottom-0 duration-500 ease-out border border-white/20`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 sm:px-10 py-6 sm:py-8 border-b border-secondary-50 bg-gradient-to-r from-white to-secondary-50/30">
+        <div className="flex items-center justify-between px-6 sm:px-10 py-6 sm:py-8 border-b border-secondary-50 bg-linear-to-r from-white to-secondary-50/30">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-secondary-900 tracking-tight">{title}</h2>
             <div className="h-1 w-8 bg-primary-500 rounded-full mt-1"></div>

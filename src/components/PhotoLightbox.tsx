@@ -25,7 +25,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ url, onClose, alt 
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-6"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-6"
       onClick={onClose}
       role="button"
       tabIndex={-1}

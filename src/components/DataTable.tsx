@@ -55,7 +55,7 @@ export const DataTable = <T extends { id: string | number }>({
 
       {data.length === 0 && (
         <div className="px-8 py-20 text-center flex flex-col items-center">
-          <div className="w-20 h-20 rounded-[2rem] bg-secondary-50 flex items-center justify-center text-secondary-300 mb-6 border-2 border-dashed border-secondary-100 group">
+          <div className="w-20 h-20 rounded-4xl bg-secondary-50 flex items-center justify-center text-secondary-300 mb-6 border-2 border-dashed border-secondary-100 group">
             <svg className="w-10 h-10 group-hover:scale-110 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16m-7 6h7" />
             </svg>

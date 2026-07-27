@@ -59,7 +59,7 @@ export const VisitScheduleTab: React.FC = () => {
 
   if (error) {
     return (
-      <div className="text-center py-20 bg-rose-50/50 rounded-[2rem] border border-rose-100">
+      <div className="text-center py-20 bg-rose-50/50 rounded-4xl border border-rose-100">
         <div className="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 mx-auto mb-4">
           <AlertCircle size={32} strokeWidth={2.5} />
         </div>
@@ -71,7 +71,7 @@ export const VisitScheduleTab: React.FC = () => {
 
   if (!scheduleData) {
     return (
-      <div className="text-center py-20 bg-secondary-50/50 rounded-[2rem] border border-secondary-100">
+      <div className="text-center py-20 bg-secondary-50/50 rounded-4xl border border-secondary-100">
         <p className="text-secondary-900 font-black uppercase tracking-tight">Empty Calendar</p>
       </div>
     )
@@ -83,7 +83,7 @@ export const VisitScheduleTab: React.FC = () => {
     <div className="space-y-10">
       {/* Calendar Strip */}
       {calendarStrip && (
-        <div className="bg-white rounded-[2rem] border border-secondary-100 p-8 shadow-sm">
+        <div className="bg-white rounded-4xl border border-secondary-100 p-8 shadow-sm">
           <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-black text-secondary-900 tracking-tight">{calendarStrip.rangeLabel}</h3>
@@ -101,7 +101,7 @@ export const VisitScheduleTab: React.FC = () => {
             {calendarStrip.days.map((day, index) => (
               <div
                 key={index}
-                className={`flex flex-col items-center justify-center min-w-[72px] px-4 py-6 rounded-[1.5rem] border-2 transition-all duration-300 ${day.active
+                className={`flex flex-col items-center justify-center min-w-18 px-4 py-6 rounded-3xl border-2 transition-all duration-300 ${day.active
                   ? 'border-primary-600 bg-primary-50 text-primary-600 shadow-lg shadow-primary-200/50 ring-4 ring-primary-500/10'
                   : day.isHoliday
                     ? 'border-secondary-100 bg-secondary-50 opacity-40 grayscale'
@@ -124,7 +124,7 @@ export const VisitScheduleTab: React.FC = () => {
       )}
 
       {/* Visits List */}
-      <div className="bg-white rounded-[2rem] border border-secondary-100 p-8 shadow-sm">
+      <div className="bg-white rounded-4xl border border-secondary-100 p-8 shadow-sm">
         <div className="flex items-center gap-4 mb-8">
           <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
             <Clock size={20} strokeWidth={2.5} />
@@ -140,7 +140,7 @@ export const VisitScheduleTab: React.FC = () => {
             {visitsList.map((visit) => (
               <div
                 key={visit.id}
-                className="group relative bg-secondary-50/50 rounded-[1.5rem] border border-transparent hover:border-primary-200 hover:bg-white transition-all duration-300 overflow-hidden"
+                className="group relative bg-secondary-50/50 rounded-3xl border border-transparent hover:border-primary-200 hover:bg-white transition-all duration-300 overflow-hidden"
               >
                 <div className="flex flex-col md:flex-row">
                   {/* Image */}
@@ -199,7 +199,7 @@ export const VisitScheduleTab: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-secondary-50 rounded-[2rem] border border-dashed border-secondary-200">
+          <div className="text-center py-20 bg-secondary-50 rounded-4xl border border-dashed border-secondary-200">
             <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-4 border border-secondary-100 shadow-sm text-secondary-200">
               <Clock size={32} strokeWidth={1} />
             </div>
