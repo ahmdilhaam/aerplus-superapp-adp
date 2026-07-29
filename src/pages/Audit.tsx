@@ -15,7 +15,7 @@ import { getAuditReports, getAuditReport } from '../services/api'
 import type { AuditReportsQuery } from '../services/api'
 import { DataTable } from '../components/DataTable'
 import { Pagination } from '../components/Pagination'
-import { ReportDetailView, ReportChecklist, statusBadge } from '../components/ReportDetailView'
+import { ReportDetailView, ReportChecklist, ReportActionNotes, statusBadge } from '../components/ReportDetailView'
 
 const PAGE_SIZE_OPTIONS = [10, 50, 100]
 
@@ -137,6 +137,16 @@ const AuditDetailModal: React.FC<AuditDetailModalProps> = ({ isOpen, onClose, au
               {detail.spvSnapshot && (
                 <div className="lg:border-l lg:border-secondary-100 lg:pl-8">
                   <ReportChecklist detail={detail.spvSnapshot} />
+                </div>
+              )}
+
+              {/* Section 3 (F16 v1.5) — setelah checklist, tetap sejajar dua kolom.
+                  Labelnya beda per kolom: audit "Rekomendasi Tindakan",
+                  SPV "Tindakan Wajib" (dari `laporan.whatToDoLabel`). */}
+              <ReportActionNotes detail={detail.audit} />
+              {detail.spvSnapshot && (
+                <div className="lg:border-l lg:border-secondary-100 lg:pl-8">
+                  <ReportActionNotes detail={detail.spvSnapshot} />
                 </div>
               )}
             </div>

@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   ImageOff,
+  ClipboardList,
 } from 'lucide-react'
 import type { VisitReportDetail, ChecklistItemPhoto } from '../types'
 import { ImageWithFallback } from './ImageWithFallback'
@@ -167,6 +168,59 @@ export const ReportChecklist: React.FC<{ detail: VisitReportDetail }> = ({ detai
         ))}
       </div>
 
+      <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />
+    </section>
+  )
+}
+
+// Section 3 (F16 v1.5): "What To Do" + catatan audit, dirender SETELAH checklist.
+// Dipisah dari blok Laporan mengikuti pola ReportChecklist: di tampilan side-by-side
+// Audit.tsx, checklist punya baris grid sendiri, jadi section ini harus ikut turun
+// agar urutan laporan → checklist → tindakan tetap terjaga di kedua tampilan.
+export const ReportActionNotes: React.FC<{ detail: VisitReportDetail }> = ({ detail }) => {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  // Judul disuplai backend per role (`laporan.whatToDoLabel`). Fallback ke `source`
+  // bila backend belum diperbarui, lalu ke label SPV — jangan hardcode satu label.
+  const label =
+    detail.laporan.whatToDoLabel ??
+    (detail.source === 'audit' ? 'Rekomendasi Tindakan' : 'Tindakan Wajib')
+  const auditNotes = detail.laporan.auditNotes ?? []
+
+  return (
+    <section>
+      <h4 className="text-base font-black text-secondary-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+        <ClipboardList size={16} className="text-primary-500" /> {label}
+      </h4>
+      <div className="space-y-4">
+        <div className="p-4 bg-white border border-secondary-100 rounded-xl">
+          {detail.laporan.whatToDo.length > 0 ? (
+            <ul className="list-disc list-inside text-sm text-secondary-700 space-y-1">
+              {detail.laporan.whatToDo.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          ) : (
+            <p className="text-sm text-secondary-300 font-medium">—</p>
+          )}
+          <PhotoThumbs photos={detail.laporanPhotos?.whatToDo} onOpen={setLightboxUrl} />
+        </div>
+
+        {/* Catatan Audit — audit-only (v1.4): multi-section (title + body + foto ≤3) */}
+        {auditNotes.length > 0 && (
+          <div className="p-4 bg-white border border-secondary-100 rounded-xl">
+            <p className="text-xs font-black uppercase tracking-widest text-secondary-500 mb-3">Catatan Audit</p>
+            <div className="space-y-3">
+              {auditNotes.map((note) => (
+                <div key={note.key} className="p-3 bg-secondary-50 rounded-lg border border-secondary-100">
+                  <p className="text-sm font-bold text-secondary-900">{note.title}</p>
+                  {note.body && (
+                    <p className="text-sm text-secondary-700 whitespace-pre-line mt-1">{note.body}</p>
+                  )}
+                  <PhotoThumbs photos={note.photos} onOpen={setLightboxUrl} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />
     </section>
   )
@@ -357,10 +411,22 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
           {/* Pengantaran Galon */}
           <div className="p-4 bg-white border border-secondary-100 rounded-xl">
             <p className="text-xs font-black uppercase tracking-widest text-secondary-500 mb-3">Pengantaran Galon</p>
-            <p className="text-sm text-secondary-900">
-              <span className="font-bold">Jumlah hari ini:</span>{' '}
-              {detail.laporan.pengantaranGalon.jumlahPengantaranHariIni ?? '-'}
-            </p>
+            {/* F16 v1.5 — dua angka terpisah: transaksi vs galon. `-` berarti tidak
+                dicatat (laporan sebelum kolom qty ada), sengaja bukan 0. */}
+            <div className="flex gap-6 text-sm">
+              <div>
+                <p className="text-[10px] text-secondary-400 font-bold">Jumlah Transaksi</p>
+                <p className="font-bold text-secondary-900">
+                  {detail.laporan.pengantaranGalon.jumlahPengantaranHariIni ?? '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-secondary-400 font-bold">Qty Galon</p>
+                <p className="font-bold text-secondary-900">
+                  {detail.laporan.pengantaranGalon.qtyPengantaranHariIni ?? '-'}
+                </p>
+              </div>
+            </div>
             <div className="mt-2">
               <p className="text-xs font-bold text-secondary-500">Kendala:</p>
               {detail.laporan.pengantaranGalon.kendala.length > 0 || detail.laporan.pengantaranGalon.kendalaLainnya ? (
@@ -426,36 +492,8 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
             <PhotoThumbs photos={detail.laporanPhotos?.kualitasAir} onOpen={setLightboxUrl} />
           </div>
 
-          {/* What To Do */}
-          <div className="p-4 bg-white border border-secondary-100 rounded-xl">
-            <p className="text-xs font-black uppercase tracking-widest text-secondary-500 mb-3">What To Do</p>
-            {detail.laporan.whatToDo.length > 0 ? (
-              <ul className="list-disc list-inside text-sm text-secondary-700 space-y-1">
-                {detail.laporan.whatToDo.map((item, i) => <li key={i}>{item}</li>)}
-              </ul>
-            ) : (
-              <p className="text-sm text-secondary-300 font-medium">—</p>
-            )}
-            <PhotoThumbs photos={detail.laporanPhotos?.whatToDo} onOpen={setLightboxUrl} />
-          </div>
-
-          {/* Catatan Audit — audit-only (v1.4): multi-section (title + body + foto ≤3) */}
-          {(detail.laporan.auditNotes?.length ?? 0) > 0 && (
-            <div className="p-4 bg-white border border-secondary-100 rounded-xl">
-              <p className="text-xs font-black uppercase tracking-widest text-secondary-500 mb-3">Catatan Audit</p>
-              <div className="space-y-3">
-                {detail.laporan.auditNotes!.map((note) => (
-                  <div key={note.key} className="p-3 bg-secondary-50 rounded-lg border border-secondary-100">
-                    <p className="text-sm font-bold text-secondary-900">{note.title}</p>
-                    {note.body && (
-                      <p className="text-sm text-secondary-700 whitespace-pre-line mt-1">{note.body}</p>
-                    )}
-                    <PhotoThumbs photos={note.photos} onOpen={setLightboxUrl} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* What To Do + Catatan Audit pindah ke <ReportActionNotes> (section 3,
+              setelah checklist) — F16 v1.5. */}
         </div>
       </section>
 
@@ -499,12 +537,30 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
               <span className="text-secondary-700 italic">{detail.approval.note}</span>
             </div>
           )}
+          {detail.approval.reply && (
+            <div className="flex items-start gap-2">
+              <span className="text-secondary-400 font-bold w-32 shrink-0">Balasan SPV</span>
+              <span className="text-secondary-700 italic">
+                {detail.approval.reply.note}
+                {detail.approval.reply.repliedAt && (
+                  <span className="text-secondary-400 not-italic ml-1">
+                    ({formatDateTime(detail.approval.reply.repliedAt)})
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       </section>
       )}
 
       {/* Checklist section — dipisah agar Audit.tsx bisa merendernya sejajar */}
       {!hideChecklist && <ReportChecklist detail={detail} />}
+
+      {/* Section 3 (F16 v1.5) — tepat setelah checklist. Saat checklist di-hoist
+          keluar (hideChecklist, tampilan side-by-side), section ini ikut di-hoist
+          oleh pemanggil agar tidak mendahului checklist. */}
+      {!hideChecklist && <ReportActionNotes detail={detail} />}
 
       {/* Photo lightbox */}
       <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />

@@ -404,6 +404,9 @@ export interface VisitReportDetail {
     label: string
   }
   reportType: 'visit' | 'failed'
+  // Asal laporan (F16 v1.5). Opsional karena backend lama belum mengirimnya —
+  // dipakai sebagai fallback label What To Do bila `laporan.whatToDoLabel` absen.
+  source?: 'spv' | 'audit'
   failedReason: string | null
   presence: VisitPresence
   outlet: {
@@ -450,7 +453,10 @@ export interface VisitReportDetail {
       note: string | null
     }
     pengantaranGalon: {
+      // Dua angka berbeda (F16 v1.5): jumlah TRANSAKSI vs jumlah GALON.
+      // `null` = tidak dicatat (laporan sebelum kolom qty ada), bukan nol.
       jumlahPengantaranHariIni: number | null
+      qtyPengantaranHariIni?: number | null
       kendala: string[]
       kendalaLainnya: string | null
       note: string | null
@@ -462,6 +468,9 @@ export interface VisitReportDetail {
       note: string | null
     }
     whatToDo: string[]
+    // Judul section per role (F16 v1.5): AUDIT "Rekomendasi Tindakan",
+    // SPV "Tindakan Wajib". Strukturnya tetap satu section — tidak dipecah.
+    whatToDoLabel?: string
     // Catatan auditor multi-section (audit-only, v1.4): tiap entri title + body +
     // foto (maks 3). Kosong/absen untuk SPV.
     auditNotes?: Array<{
@@ -482,6 +491,14 @@ export interface VisitReportDetail {
     supervisor: { id: string; name: string }
     supervisorArea: { id: string; name: string } | null
     note: string
+    // Balasan SPV atas `note` di atas — sekali tulis, jadi `null` berarti belum
+    // pernah dibalas (bukan "dibalas dengan teks kosong"). Dashboard hanya
+    // menampilkan; tidak ada jalur membalas dari sisi admin.
+    reply: {
+      note: string
+      repliedAt: string | null
+      repliedBy: { id: string; name: string } | null
+    } | null
   } | null
   checklist: {
     summary: {
