@@ -497,6 +497,14 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
         </div>
       </section>
 
+      {/* Checklist section — dipisah agar Audit.tsx bisa merendernya sejajar */}
+      {!hideChecklist && <ReportChecklist detail={detail} />}
+
+      {/* Section 3 (F16 v1.5) — tepat setelah checklist. Saat checklist di-hoist
+          keluar (hideChecklist, tampilan side-by-side), section ini ikut di-hoist
+          oleh pemanggil agar tidak mendahului checklist. */}
+      {!hideChecklist && <ReportActionNotes detail={detail} />}
+
       {/* Approval section — SPV only; laporan audit tidak melalui approval */}
       {detail.approval && (
       <section>
@@ -512,15 +520,9 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
             <span className="text-secondary-400 font-bold w-32 shrink-0">Supervisor</span>
             <span className="text-secondary-900 font-medium">{detail.approval.supervisor.name}</span>
           </div>
-          {detail.approval.supervisorArea && (
-            <div className="flex items-start gap-2">
-              <span className="text-secondary-400 font-bold w-32 shrink-0">Area SPV</span>
-              <span className="text-secondary-900 font-medium">{detail.approval.supervisorArea.name}</span>
-            </div>
-          )}
           {detail.approval.approvedBy && (
             <div className="flex items-start gap-2">
-              <span className="text-secondary-400 font-bold w-32 shrink-0">Disetujui SPV Area</span>
+              <span className="text-secondary-400 font-bold w-32 shrink-0">Disetujui Oleh</span>
               <span className="text-secondary-900 font-medium">
                 {detail.approval.approvedBy.name}
                 {detail.approval.approvedAt && (
@@ -553,14 +555,6 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
         </div>
       </section>
       )}
-
-      {/* Checklist section — dipisah agar Audit.tsx bisa merendernya sejajar */}
-      {!hideChecklist && <ReportChecklist detail={detail} />}
-
-      {/* Section 3 (F16 v1.5) — tepat setelah checklist. Saat checklist di-hoist
-          keluar (hideChecklist, tampilan side-by-side), section ini ikut di-hoist
-          oleh pemanggil agar tidak mendahului checklist. */}
-      {!hideChecklist && <ReportActionNotes detail={detail} />}
 
       {/* Photo lightbox */}
       <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} alt="Bukti foto diperbesar" />
