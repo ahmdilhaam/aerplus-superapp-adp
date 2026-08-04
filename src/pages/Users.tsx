@@ -57,7 +57,9 @@ export const Users: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  const [editFormData, setEditFormData] = useState({ name: '', phone: '', address: '', password: '', areaId: '' })
+  // `role` tidak bisa diubah dari modal ini — disimpan hanya agar aturan wajib/opsional
+  // kolom Area di sini persis sama dengan modal Add User & Change Roles.
+  const [editFormData, setEditFormData] = useState({ name: '', phone: '', address: '', password: '', areaId: '', role: 'STAFF' })
   const [editError, setEditError] = useState<string | null>(null)
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false)
   const [roleEditingUserId, setRoleEditingUserId] = useState<string | null>(null)
@@ -143,6 +145,14 @@ export const Users: React.FC = () => {
   // v1.4: AUDIT boleh diberi area (OPSIONAL) — menyiapkan audit per-area.
   // Area kosong = auditor mencakup SEMUA area (company-wide, perilaku default saat ini).
   const roleSupportsArea = (role: string) => roleRequiresOutlet(role) || role === 'AUDIT'
+  // Aturan tunggal kolom Area, dipakai identik oleh Add User, Edit User & Change Roles:
+  // wajib untuk semua role kecuali AUDIT (AUDIT kosong = mencakup semua area).
+  const roleRequiresArea = (role: string) => roleSupportsArea(role) && role !== 'AUDIT'
+  const AREA_REQUIRED_MESSAGE = 'Please select an area'
+  // Backend memvalidasi areaId sebagai UUID; string kosong harus dikirim sebagai null,
+  // bukan '' (kalau tidak, request ditolak 400 oleh zod).
+  const normalizeAreaId = (role: string, areaId: string) =>
+    roleSupportsArea(role) ? areaId || null : null
 
   const roleColor = (roles?: string[]): string => {
     const roleMap: Record<string, string> = {
@@ -170,7 +180,10 @@ export const Users: React.FC = () => {
     if (!formData.username || !formData.password || !formData.name || !formData.phone || !formData.address) {
       return
     }
-    if (roleRequiresOutlet(formData.role) && (!formData.areaId || formData.outlets.length === 0)) {
+    if (roleRequiresArea(formData.role) && !formData.areaId) {
+      return
+    }
+    if (roleRequiresOutlet(formData.role) && formData.outlets.length === 0) {
       return
     }
 
@@ -183,7 +196,7 @@ export const Users: React.FC = () => {
         name: formData.name,
         phone: formData.phone,
         address: formData.address,
-        areaId: roleSupportsArea(formData.role) ? (formData.areaId || null) : null,
+        areaId: normalizeAreaId(formData.role, formData.areaId),
         avatarUrl: '',
         companyRoles: [formData.role],
         outletRoles: roleRequiresOutlet(formData.role)
@@ -260,6 +273,7 @@ export const Users: React.FC = () => {
       address: user.address || '',
       password: '',
       areaId: user.areaId || '',
+      role: user.companyRoles?.[0] || 'STAFF',
     })
     setEditError(null)
     setShowEditPassword(false)
@@ -276,6 +290,10 @@ export const Users: React.FC = () => {
       setEditError('User name is required')
       return
     }
+    if (roleRequiresArea(editFormData.role) && !editFormData.areaId) {
+      setEditError(AREA_REQUIRED_MESSAGE)
+      return
+    }
 
     try {
       setIsSubmitting(true)
@@ -286,7 +304,7 @@ export const Users: React.FC = () => {
         name: editFormData.name,
         phone: editFormData.phone,
         address: editFormData.address,
-        areaId: editFormData.areaId,
+        areaId: normalizeAreaId(editFormData.role, editFormData.areaId),
         ...(editFormData.password && { password: editFormData.password }),
       }
 
@@ -296,7 +314,7 @@ export const Users: React.FC = () => {
       const usersData = await getUsers()
       setUsers(usersData)
 
-      setEditFormData({ name: '', phone: '', address: '', password: '', areaId: '' })
+      setEditFormData({ name: '', phone: '', address: '', password: '', areaId: '', role: 'STAFF' })
       setEditingUserId(null)
       setIsEditModalOpen(false)
     } catch (err) {
@@ -307,7 +325,7 @@ export const Users: React.FC = () => {
   }
 
   const handleCloseEditModal = () => {
-    setEditFormData({ name: '', phone: '', address: '', password: '', areaId: '' })
+    setEditFormData({ name: '', phone: '', address: '', password: '', areaId: '', role: 'STAFF' })
     setEditingUserId(null)
     setEditError(null)
     setShowEditPassword(false)
@@ -335,6 +353,10 @@ export const Users: React.FC = () => {
       setRoleError('Please select a role')
       return
     }
+    if (roleRequiresArea(roleFormData.companyRole) && !roleFormData.areaId) {
+      setRoleError(AREA_REQUIRED_MESSAGE)
+      return
+    }
     if (roleRequiresOutlet(roleFormData.companyRole) && roleFormData.outlets.length === 0) {
       setRoleError('Please select at least one outlet')
       return
@@ -346,7 +368,7 @@ export const Users: React.FC = () => {
       if (!roleEditingUserId) return
 
       await updateUserRoles(roleEditingUserId, {
-        areaId: roleSupportsArea(roleFormData.companyRole) ? (roleFormData.areaId || null) : null,
+        areaId: normalizeAreaId(roleFormData.companyRole, roleFormData.areaId),
         companyRoles: [roleFormData.companyRole],
         outletRoles: roleRequiresOutlet(roleFormData.companyRole)
           ? roleFormData.outlets.map(outletId => ({
@@ -711,7 +733,7 @@ export const Users: React.FC = () => {
 
           {roleSupportsArea(formData.role) && (
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area {roleRequiresOutlet(formData.role) ? <RequiredMark /> : <OptionalMark />}</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area {roleRequiresArea(formData.role) ? <RequiredMark /> : <OptionalMark />}</label>
             <div className="relative group">
               <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
               <select
@@ -765,7 +787,7 @@ export const Users: React.FC = () => {
             <Button
               variant="primary"
               onClick={handleAddUser}
-              disabled={!formData.username || !formData.password || !formData.name || !formData.phone || !formData.address || (roleRequiresOutlet(formData.role) && (!formData.areaId || formData.outlets.length === 0)) || isSubmitting}
+              disabled={!formData.username || !formData.password || !formData.name || !formData.phone || !formData.address || (roleRequiresArea(formData.role) && !formData.areaId) || (roleRequiresOutlet(formData.role) && formData.outlets.length === 0) || isSubmitting}
               className="w-full"
             >
               {isSubmitting ? 'Creating...' : 'Confirm & Add User'}
@@ -829,8 +851,9 @@ export const Users: React.FC = () => {
             </div>
           </div>
 
+          {roleSupportsArea(editFormData.role) && (
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area <OptionalMark /></label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area {roleRequiresArea(editFormData.role) ? <RequiredMark /> : <OptionalMark />}</label>
             <div className="relative group">
               <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
               <select
@@ -839,7 +862,7 @@ export const Users: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all text-sm font-bold text-gray-700 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">Select an area...</option>
+                <option value="">{editFormData.role === 'AUDIT' ? 'Semua area (default)' : 'Select an area...'}</option>
                 {areas.map(area => (
                   <option key={area.id} value={area.id}>{area.name}</option>
                 ))}
@@ -848,7 +871,11 @@ export const Users: React.FC = () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
+            {editFormData.role === 'AUDIT' && (
+              <p className="text-[10px] text-gray-400 ml-1">Kosongkan agar auditor mencakup semua area.</p>
+            )}
           </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Password <OptionalMark /></label>
@@ -882,7 +909,7 @@ export const Users: React.FC = () => {
             <Button
               variant="primary"
               onClick={handleEditUser}
-              disabled={!editFormData.name || isSubmitting}
+              disabled={!editFormData.name || (roleRequiresArea(editFormData.role) && !editFormData.areaId) || isSubmitting}
               className="w-full"
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
@@ -923,7 +950,7 @@ export const Users: React.FC = () => {
 
           {roleSupportsArea(roleFormData.companyRole) && (
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area <OptionalMark /></label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Area {roleRequiresArea(roleFormData.companyRole) ? <RequiredMark /> : <OptionalMark />}</label>
             <div className="relative group">
               <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
               <select
@@ -978,7 +1005,7 @@ export const Users: React.FC = () => {
             <Button
               variant="primary"
               onClick={handleUpdateRoles}
-              disabled={!roleFormData.companyRole || (roleRequiresOutlet(roleFormData.companyRole) && roleFormData.outlets.length === 0) || isSubmitting}
+              disabled={!roleFormData.companyRole || (roleRequiresArea(roleFormData.companyRole) && !roleFormData.areaId) || (roleRequiresOutlet(roleFormData.companyRole) && roleFormData.outlets.length === 0) || isSubmitting}
               className="w-full"
             >
               {isSubmitting ? 'Updating...' : 'Update Roles'}

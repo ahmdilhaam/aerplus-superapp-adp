@@ -367,17 +367,43 @@ export interface VisitPresence {
   checkinPhotoUrl: string | null
   // Idem untuk saat check-out. Null bila SPV belum check-out.
   checkoutPhotoUrl: string | null
+  // Geotag mentah tempat tombol check-in/check-out ditekan. Opsional karena
+  // backend lama belum mengirimnya; null bila tahap itu belum dilakukan.
+  checkinLat?: number | null
+  checkinLng?: number | null
+  checkoutLat?: number | null
+  checkoutLng?: number | null
+  // Penanda presensi di luar radius geofence outlet + jaraknya dalam meter.
+  // `distanceMeters` null = jarak tak bisa dihitung (outlet belum dikoordinatkan),
+  // bukan berarti 0.
+  checkinOutsideGeofence?: boolean
+  checkinDistanceMeters?: number | null
+  checkoutOutsideGeofence?: boolean
+  checkoutDistanceMeters?: number | null
 }
 
 export interface AdminVisitItem {
   id: string
   type: 'visit' | 'agenda' | 'libur'
+  // Jalur asal item. Agenda & libur selalu 'spv'. Opsional karena backend lama
+  // belum mengirimnya — perlakukan absen sebagai 'spv'.
+  source?: 'spv' | 'audit'
   time: string | null
   endTime: string | null
   title: string | null
   note: string | null
   name: string | null
-  outlet: { id: string; name: string; address: string; imageUrl: string } | null
+  outlet: {
+    id: string
+    name: string
+    address: string
+    imageUrl: string
+    // Titik acuan peta presensi. Opsional (backend lama) & null bila outlet
+    // belum dikoordinatkan — peta lalu digambar tanpa lingkaran geofence.
+    latitude?: number | null
+    longitude?: number | null
+    checkinRadiusMeters?: number
+  } | null
   status: string
   statusCode: string
   statusColor: { code: string; hex: string }
@@ -414,6 +440,11 @@ export interface VisitReportDetail {
     name: string
     address: string
     imageUrl: string
+    // Titik acuan peta presensi. Opsional (backend lama) & null bila outlet
+    // belum dikoordinatkan.
+    latitude?: number | null
+    longitude?: number | null
+    checkinRadiusMeters?: number
     area: {
       id: string
       name: string

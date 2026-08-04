@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import type { AdminVisitScheduleResponse, Outlet } from '../types'
 import { getAdminVisitSchedule, getOutlets } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 import { VisitCalendarView } from '../components/VisitCalendarView'
 import { VisitListView } from '../components/VisitListView'
 import { MS_PER_DAY, addDays, formatWeekRange, startOfWeek } from '../utils/visitDate'
@@ -115,6 +116,13 @@ const OutletFilter: React.FC<OutletFilterProps> = ({ outlets, value, onChange })
 export const VisitSchedules: React.FC = () => {
   const today = new Date().toISOString().slice(0, 10)
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  // Filter Sumber hanya relevan untuk pemegang audit.read (Company Admin & Super
+  // Admin). Role lain — termasuk HOFO — tidak melihat kontrolnya, dan server pun
+  // tetap memotong hasilnya ke jalur SPV, jadi ini murni penyembunyian UI.
+  const { user } = useAuth()
+  const role = user?.role || user?.companyRoles?.[0]
+  const canFilterSource = role === 'SUPER_ADMIN' || role === 'COMPANY_ADMIN'
+  const [source, setSource] = useState<'all' | 'spv' | 'audit'>('all')
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
   const [weekStart, setWeekStart] = useState<string>(() => startOfWeek(today))
   const [startDate, setStartDate] = useState<string>(weekAgo)
@@ -161,6 +169,7 @@ export const VisitSchedules: React.FC = () => {
         start_date: rangeStart || undefined,
         end_date: rangeEnd || undefined,
         outlet_id: outletId || undefined,
+        source: canFilterSource ? source : undefined,
       })
       setData(result)
     } catch (err) {
@@ -169,7 +178,7 @@ export const VisitSchedules: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [rangeStart, rangeEnd, outletId])
+  }, [rangeStart, rangeEnd, outletId, source, canFilterSource])
 
   useEffect(() => {
     fetchSchedule()
@@ -201,6 +210,25 @@ export const VisitSchedules: React.FC = () => {
           <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Outlet</label>
           <OutletFilter outlets={outlets} value={outletId} onChange={setOutletId} />
         </div>
+
+        {/* Sumber jalur kunjungan — hanya untuk pemegang audit.read */}
+        {canFilterSource && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-secondary-400 ml-1">Sumber</label>
+            <div className="relative">
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value as 'all' | 'spv' | 'audit')}
+                className="w-full px-4 py-3 pr-10 bg-white border border-secondary-100 rounded-2xl shadow-sm focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-300 transition-all text-sm font-semibold text-secondary-700 appearance-none cursor-pointer"
+              >
+                <option value="all">Semua</option>
+                <option value="spv">SPV</option>
+                <option value="audit">Audit</option>
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-secondary-400" />
+            </div>
+          </div>
+        )}
 
         {/* View mode toggle */}
         <div className="flex flex-col gap-1">
@@ -326,7 +354,9 @@ export const VisitSchedules: React.FC = () => {
           </div>
           <p className="text-secondary-900 font-black uppercase tracking-[0.2em] text-xs">Tidak Ada Jadwal Kunjungan</p>
           <p className="text-secondary-400 text-[10px] font-bold mt-2 italic">
-            {outletId ? 'Coba sesuaikan filter pencarian' : 'Belum ada jadwal kunjungan untuk tanggal ini'}
+            {outletId || (canFilterSource && source !== 'all')
+              ? 'Coba sesuaikan filter pencarian'
+              : 'Belum ada jadwal kunjungan untuk tanggal ini'}
           </p>
         </div>
       ) : !error && data ? (

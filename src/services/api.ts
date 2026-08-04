@@ -590,6 +590,10 @@ export interface AdminVisitScheduleQuery {
   start_date?: string
   end_date?: string
   outlet_id?: string
+  // Jalur kunjungan yang diminta. Server tetap memotongnya sesuai permission:
+  // jadwal audit hanya untuk pemegang `audit.read`, jadi meminta 'audit' tanpa
+  // hak akan mengembalikan hasil kosong, bukan error.
+  source?: 'spv' | 'audit' | 'all'
 }
 
 export const getAdminVisitSchedule = async (query: AdminVisitScheduleQuery = {}): Promise<AdminVisitScheduleResponse> => {
@@ -597,6 +601,7 @@ export const getAdminVisitSchedule = async (query: AdminVisitScheduleQuery = {})
   if (query.start_date) params.set('start_date', query.start_date)
   if (query.end_date) params.set('end_date', query.end_date)
   if (query.outlet_id) params.set('outlet_id', query.outlet_id)
+  if (query.source) params.set('source', query.source)
   const qs = params.toString()
   const url = `${API_BASE_URL}/api/admin/visits${qs ? `?${qs}` : ''}`
   const response = await fetchWithAuth(url)

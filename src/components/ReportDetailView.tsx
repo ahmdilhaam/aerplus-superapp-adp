@@ -15,6 +15,7 @@ import {
 import type { VisitReportDetail, ChecklistItemPhoto } from '../types'
 import { ImageWithFallback } from './ImageWithFallback'
 import { PhotoLightbox } from './PhotoLightbox'
+import { VisitPresenceMap } from './VisitPresenceMap'
 import { Badge } from './Badge'
 import { resolveApiFileUrl } from '../utils/image'
 import { durationBadge } from '../utils/visitPresence'
@@ -312,11 +313,29 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
                   Telat
                 </span>
               )}
+              {detail.presence.checkinOutsideGeofence && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-200">
+                  <AlertTriangle size={11} />
+                  {detail.presence.checkinDistanceMeters != null
+                    ? `Di luar radius · ${detail.presence.checkinDistanceMeters} m`
+                    : 'Di luar radius'}
+                </span>
+              )}
             </span>
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 flex-wrap">
             <span className="text-secondary-400 font-bold w-36 shrink-0">Check-out</span>
-            <span className="text-secondary-900 font-medium">{formatDateTime(detail.presence.checkoutAt)}</span>
+            <span className="text-secondary-900 font-medium flex items-center gap-2 flex-wrap">
+              {formatDateTime(detail.presence.checkoutAt)}
+              {detail.presence.checkoutOutsideGeofence && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-200">
+                  <AlertTriangle size={11} />
+                  {detail.presence.checkoutDistanceMeters != null
+                    ? `Di luar radius · ${detail.presence.checkoutDistanceMeters} m`
+                    : 'Di luar radius'}
+                </span>
+              )}
+            </span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-secondary-400 font-bold w-36 shrink-0">Durasi Kunjungan</span>
@@ -359,6 +378,14 @@ export const ReportDetailView: React.FC<ReportDetailViewProps> = ({ detail, hide
               })()}
             </div>
           )}
+          {/* Peta titik presensi — sama untuk laporan SPV maupun audit. */}
+          {(detail.presence.checkinLat != null && detail.presence.checkinLng != null) ||
+          (detail.presence.checkoutLat != null && detail.presence.checkoutLng != null) ? (
+            <div className="pt-2">
+              <p className="text-secondary-400 font-bold mb-2">Lokasi Presensi</p>
+              <VisitPresenceMap presence={detail.presence} outlet={detail.outlet} />
+            </div>
+          ) : null}
         </div>
       </section>
 

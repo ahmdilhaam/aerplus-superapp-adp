@@ -8,6 +8,7 @@ import { durationBadge } from '../utils/visitPresence'
 import { Badge } from './Badge'
 import { ImageWithFallback } from './ImageWithFallback'
 import { PhotoLightbox } from './PhotoLightbox'
+import { VisitPresenceMap } from './VisitPresenceMap'
 import { Modal } from './Modal'
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -44,6 +45,19 @@ const PresencePhoto: React.FC<{
       </div>
     )
 
+// Penanda presensi di luar radius geofence outlet. Jarak null = tak bisa dihitung
+// (outlet belum dikoordinatkan), jadi angkanya sengaja tidak ditampilkan.
+const GeofenceWarning: React.FC<{ outside?: boolean; distanceMeters?: number | null }> = ({
+  outside,
+  distanceMeters,
+}) =>
+  outside ? (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-200">
+      <AlertTriangle size={11} />
+      {distanceMeters != null ? `Di luar radius · ${distanceMeters} m` : 'Di luar radius'}
+    </span>
+  ) : null
+
 interface VisitDetailModalProps {
   /** Item yang sedang dibuka; null = modal tertutup. */
   item: AdminVisitItem | null
@@ -63,6 +77,11 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
   const checkinPhotoUrl = resolveApiFileUrl(v.presence?.checkinPhotoUrl)
   const checkoutPhotoUrl = resolveApiFileUrl(v.presence?.checkoutPhotoUrl)
   const duration = durationBadge(v.presence?.durationMinutes)
+  // Peta hanya berarti kalau ada geotag presensi; koordinat outlet saja tidak
+  // menceritakan apa pun soal presensi (dan jadwal lama belum punya geotag).
+  const hasPresenceLocation =
+    (v.presence?.checkinLat != null && v.presence?.checkinLng != null) ||
+    (v.presence?.checkoutLat != null && v.presence?.checkoutLng != null)
 
   const heading =
     v.type === 'visit' ? (v.outlet?.name ?? '-') : v.type === 'agenda' ? (v.title ?? 'Agenda') : (v.name ?? 'Libur')
@@ -167,10 +186,20 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
                         Telat
                       </span>
                     )}
+                    <GeofenceWarning
+                      outside={v.presence.checkinOutsideGeofence}
+                      distanceMeters={v.presence.checkinDistanceMeters}
+                    />
                   </Row>
                   <Row label="Check-out">
                     <LogOut size={13} className="text-secondary-400" />
                     {formatDateTimeId(v.presence.checkoutAt)}
+                    {v.presence.checkoutAt && (
+                      <GeofenceWarning
+                        outside={v.presence.checkoutOutsideGeofence}
+                        distanceMeters={v.presence.checkoutDistanceMeters}
+                      />
+                    )}
                   </Row>
                   <Row label="Durasi">
                     {duration ? <Badge variant={duration.variant} label={duration.label} /> : <span className="text-secondary-300">-</span>}
@@ -181,6 +210,18 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
                       <PresencePhoto label="Check-in" url={checkinPhotoUrl} onOpen={setLightboxUrl} />
                       <PresencePhoto label="Check-out" url={checkoutPhotoUrl} onOpen={setLightboxUrl} />
                     </div>
+                  </div>
+                  <div className="pt-1">
+                    <p className="text-secondary-400 font-bold text-sm mb-2">Lokasi Presensi</p>
+                    {hasPresenceLocation ? (
+                      <VisitPresenceMap presence={v.presence} outlet={v.outlet} />
+                    ) : (
+                      <div className="p-3 rounded-xl bg-secondary-50 border border-dashed border-secondary-200 text-center">
+                        <p className="text-secondary-400 text-[11px] font-bold">
+                          Titik lokasi presensi tidak tersedia untuk kunjungan ini
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

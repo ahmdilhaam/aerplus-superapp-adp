@@ -60,6 +60,7 @@ const CalendarItemChip: React.FC<{ item: AdminVisitItem; onClick: () => void }> 
         {v.presence?.isLate && <span className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500" />}
       </p>
       <p className="text-[9px] font-bold opacity-60 mt-0.5 truncate">
+        {v.source === 'audit' ? 'Audit · ' : ''}
         {v.time ? `${v.time} · ` : ''}
         {v.status}
       </p>

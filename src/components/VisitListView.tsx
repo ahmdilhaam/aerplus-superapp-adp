@@ -84,7 +84,14 @@ const ScheduleItemRow: React.FC<{ item: AdminVisitItem; onPhotoClick: (url: stri
 
       {/* Outlet info */}
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-secondary-900 text-sm truncate">{v.outlet?.name}</p>
+        <p className="font-bold text-secondary-900 text-sm truncate flex items-center gap-2">
+          <span className="truncate">{v.outlet?.name}</span>
+          {v.source === 'audit' && (
+            <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
+              Audit
+            </span>
+          )}
+        </p>
         <p className="text-[11px] text-secondary-400 flex items-center gap-1 mt-0.5">
           <MapPin size={10} />
           <span className="truncate">{v.outlet?.address}</span>
