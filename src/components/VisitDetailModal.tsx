@@ -77,6 +77,15 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
   const checkinPhotoUrl = resolveApiFileUrl(v.presence?.checkinPhotoUrl)
   const checkoutPhotoUrl = resolveApiFileUrl(v.presence?.checkoutPhotoUrl)
   const duration = durationBadge(v.presence?.durationMinutes)
+  // Label baris mengikuti jalur kunjungan — jadwal audit dikerjakan auditor,
+  // bukan supervisor. Agenda & libur selalu domain supervisor.
+  const roleLabel = v.source === 'audit' ? 'Auditor' : 'Supervisor'
+  // `supervisor.role` dari backend berbentuk "<peran> <area>" (area bisa kosong).
+  // Buang bagian perannya karena sudah jadi label baris, sisakan areanya saja
+  // supaya tidak terbaca "Supervisor: Nama AUDITOR".
+  const areaSuffix = supervisor?.role?.startsWith(roleLabel)
+    ? supervisor.role.slice(roleLabel.length).trim()
+    : (supervisor?.role ?? '')
   // Peta hanya berarti kalau ada geotag presensi; koordinat outlet saja tidak
   // menceritakan apa pun soal presensi (dan jadwal lama belum punya geotag).
   const hasPresenceLocation =
@@ -132,7 +141,7 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
           {/* Jadwal */}
           <div className="p-4 bg-secondary-50/60 border border-secondary-100 rounded-2xl space-y-2">
             {supervisor && (
-              <Row label="Supervisor">
+              <Row label={roleLabel}>
                 <ImageWithFallback
                   src={supervisor.avatarUrl}
                   alt={supervisor.name}
@@ -145,9 +154,11 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({ item: v, sup
                 />
                 <span>
                   {supervisor.name}
-                  <span className="text-secondary-400 font-bold text-[10px] uppercase tracking-widest ml-2">
-                    {supervisor.role}
-                  </span>
+                  {areaSuffix && (
+                    <span className="text-secondary-400 font-bold text-[10px] uppercase tracking-widest ml-2">
+                      {areaSuffix}
+                    </span>
+                  )}
                 </span>
               </Row>
             )}
